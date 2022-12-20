@@ -203,6 +203,11 @@ class Client:
     def BuildMqttPayload(self):
         return json.dumps({
             "state":        "ON" if self.State == 1 else "OFF",
+            "color": {
+                "r": self.R,
+                "g": self.G,
+                "b": self.B
+            },
             "brightness":   round(self.Brightness * 255)
         });
 
