@@ -23,6 +23,10 @@ pip install bleak
 * Auto configuration from Home Assistant Mqtt objects
 * Keep alive BLE for fast response time
 
+# Tested hardware
+- H6107 Fully functional
+- H6159 Fully functional
+
 # Configuration
 
 Configuration is located at top of file main.py
