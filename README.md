@@ -23,6 +23,14 @@ pip install bleak
 * Auto configuration from Home Assistant Mqtt objects
 * Keep alive BLE for fast response time
 
+# Beware: dongles with the same MAC address!
+Multiple dongle of the same brand will share the same MAC address and violates the specifications.
+Having multiple dongle with the same MAC address will cause interference and will make the connections not working.
+
+If you are lucky, you can re-program the dongles to change it's MAC address (RUN AT YOUR OWN RISKS)
+- Windows: [Bluetooth MAC Address Changer](https://macaddresschanger.com/)
+- Linux: [bdaddr](https://github.com/thxomas/bdaddr)
+
 # Tested hardware
 - H6107 Fully functional
 - H6159 Fully functional
