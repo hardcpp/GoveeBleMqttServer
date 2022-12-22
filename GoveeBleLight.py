@@ -28,7 +28,7 @@ class ELedMode(IntEnum):
 # ////////////////////////////////////////////////////////////////////////////
 
 class Client:
-    def __init__(self, p_DeviceID, p_MqttClient, p_MqttTopic):
+    def __init__(self, p_DeviceID, p_MqttClient, p_MqttTopic, p_Adapter):
 
         self.State              = 0;
         self.Brightness         = 1;
@@ -38,6 +38,7 @@ class Client:
 
         self._DeviceID          = p_DeviceID;
         self._Client            = None;
+        self._Adapter           = p_Adapter;
         self._Reconnect         = 0;
         self._MqttClient        = p_MqttClient;
         self._MqttTopic         = p_MqttTopic;
@@ -148,7 +149,11 @@ class Client:
         except Exception:
             pass;
 
-        self._Client = BleakClient(self._DeviceID);
+        if self._Adapter is not None:
+            self._Client = BleakClient(self._DeviceID, adapter= self._Adapter);
+        else:
+            self._Client = BleakClient(self._DeviceID);
+
         await self._Client.connect();
         self._Reconnect = 0;
 

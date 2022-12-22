@@ -2,8 +2,10 @@ import asyncio;
 import json;
 import paho.mqtt.client as mqtt;
 import GoveeBleLight;
+import sys, getopt
 
 SERVER_ZONE_ID: int = 1;
+ADAPTER: str = None;
 MQTT_SERVER: str = "192.168.10.170";
 MQTT_PORT: int = 1883;
 MQTT_USER: str = None;
@@ -19,7 +21,26 @@ MESSAGE_QUEUE = [];
 # ////////////////////////////////////////////////////////////////////////////
 
 # Entry point
-async def main():
+async def main(argv):
+    global SERVER_ZONE_ID;
+    global ADAPTER;
+
+    l_Options, _ = getopt.getopt(argv,"hz:a:",["adapter=","zone="])
+    for l_Option, l_Argument in l_Options:
+        if l_Option == '-h':
+            print('main.py -a <adapter> -z <zone>');
+            sys.exit();
+
+        elif l_Option in ("-a", "--adapter"):
+            ADAPTER = l_Argument
+
+        elif l_Option in ("-z", "--zone"):
+            SERVER_ZONE_ID = l_Argument
+
+    print("Starting with zone " + str(SERVER_ZONE_ID));
+    if ADAPTER is not None:
+        print("Starting with adapter " + ADAPTER);
+
     l_MqttClient = mqtt.Client();
     l_MqttClient.on_connect = Mqtt_OnConnect;
     l_MqttClient.on_message = Mqtt_OnMessage;
@@ -72,7 +93,7 @@ async def OnPayloadReceived(p_MqttClient, p_DeviceID, p_Paypload):
         p_DeviceID = ':'.join(p_DeviceID[i:i+2] for i in range(0, len(p_DeviceID), 2));
 
         if not p_DeviceID in DEVICES:
-            DEVICES[p_DeviceID] = GoveeBleLight.Client(p_DeviceID, p_MqttClient, "goveeblemqtt/zone" + str(SERVER_ZONE_ID) + "/light/" + l_RequestedDeviceID + "/state");
+            DEVICES[p_DeviceID] = GoveeBleLight.Client(p_DeviceID, p_MqttClient, "goveeblemqtt/zone" + str(SERVER_ZONE_ID) + "/light/" + l_RequestedDeviceID + "/state", ADAPTER);
 
         l_Device        = DEVICES[p_DeviceID];
         l_ExpectedState = 1 if p_Paypload["state"] == "ON" else 0;
@@ -98,4 +119,5 @@ async def OnPayloadReceived(p_MqttClient, p_DeviceID, p_Paypload):
 # ////////////////////////////////////////////////////////////////////////////
 # ////////////////////////////////////////////////////////////////////////////
 
-asyncio.run(main());
+if __name__ == "__main__":
+    asyncio.run(main(sys.argv[1:]));
