@@ -29,7 +29,6 @@ class ELedMode(IntEnum):
 
 class Client:
     def __init__(self, p_DeviceID, p_MqttClient, p_MqttTopic, p_Adapter):
-
         self.State              = 0;
         self.Brightness         = 1;
         self.R                  = 255;
@@ -46,8 +45,26 @@ class Client:
         self._DirtyBrightness   = False;
         self._DirtyRGB          = False;
         self._LastSent          = time.time();
+        self._ThreadCond        = True;
+        self._Thread            = threading.Thread(target= self._ThreadStarter)
 
-        threading.Thread(target=self._ThreadStarter).start();
+        self._Thread.start();
+
+    def __del__(self):
+        print("[GoveeBleLight.Client::__del__] CLosing device " + self._DeviceID + "...");
+
+        self._ThreadCond = False;
+        self._Thread.join();
+
+        try:
+            if self._Client is not None:
+                print("[GoveeBleLight.Client::__del__] Disconnecting device " + self._DeviceID);
+                self._Client.disconnect();
+
+        except Exception:
+            pass;
+
+        self._Client = None;
 
     # ////////////////////////////////////////////////////////////////////////////
     # ////////////////////////////////////////////////////////////////////////////
@@ -83,10 +100,10 @@ class Client:
     # ////////////////////////////////////////////////////////////////////////////
 
     async def _ThreadCoroutine(self):
-        while 1:
+        while self._ThreadCond:
             try:
                 if not await self._Connect():
-                    time.sleep(1);
+                    time.sleep(2);
                     continue;
 
                 l_Changed = True;
@@ -124,20 +141,37 @@ class Client:
 
                 time.sleep(0.01);
 
-            except Exception:
-                time.sleep(1);
+            except Exception as l_Exception:
+                print(f"[GoveeBleLight.Client::_ThreadCoroutine] Error: {l_Exception}");
+
+                try:
+                    if self._Client is not None:
+                        await self._Client.disconnect();
+                except Exception:
+                    pass;
+
+                self._Client = None;
+
+                time.sleep(2);
+
+        try:
+            if self._Client is not None:
+                print("[GoveeBleLight.Client::_ThreadCoroutine] Disconnecting device " + self._DeviceID);
+                await self._Client.disconnect();
+
+        except Exception:
+            pass;
+
+        self._Client = None;
 
     def _ThreadStarter(self):
-        l_ThreadCoroutine = asyncio.new_event_loop()
-        asyncio.set_event_loop(l_ThreadCoroutine)
-        l_ThreadCoroutine.run_until_complete(self._ThreadCoroutine())
-        l_ThreadCoroutine.close()
+        asyncio.run(self._ThreadCoroutine())
 
     # ////////////////////////////////////////////////////////////////////////////
     # ////////////////////////////////////////////////////////////////////////////
 
     async def _Connect(self):
-        if self._Client and self._Client.is_connected:
+        if self._Client != None and self._Client.is_connected:
             return True;
 
         print("[GoveeBleLight.Client::Connect] re/connecting to device " + self._DeviceID);
@@ -145,19 +179,28 @@ class Client:
         try:
             if self._Client is not None:
                 await self._Client.disconnect();
-                self._Client = None;
+
         except Exception:
             pass;
 
-        if self._Adapter is not None:
-            self._Client = BleakClient(self._DeviceID, adapter= self._Adapter);
-        else:
-            self._Client = BleakClient(self._DeviceID);
+        self._Client = None;
 
-        await self._Client.connect();
-        self._Reconnect = 0;
+        try:
+            if self._Adapter is not None:
+                self._Client = BleakClient(self._DeviceID, adapter= self._Adapter);
+            else:
+                self._Client = BleakClient(self._DeviceID);
 
-        return self._Client.is_connected;
+            await self._Client.connect();
+            self._Reconnect = 0;
+
+            return self._Client.is_connected;
+
+        except Exception as l_Exception:
+            self._Client = None;
+            print(f"[GoveeBleLight.Client::_Connect] Error: {l_Exception}");
+
+        return False;
 
     # ////////////////////////////////////////////////////////////////////////////
     # ////////////////////////////////////////////////////////////////////////////
@@ -170,7 +213,7 @@ class Client:
             return await self._Send(ELedCommand.SetPower, [1 if p_State else 0])
 
         except Exception as l_Exception:
-             print(f"[GoveeBleLight.Client::SetPower] Error: {l_Exception}");
+             print(f"[GoveeBleLight.Client::_Send_SetPower] Error: {l_Exception}");
 
         return False;
 
@@ -182,7 +225,7 @@ class Client:
             return await self._Send(ELedCommand.SetBrightness, [round(p_Value * 0xFF)]);
 
         except Exception as l_Exception:
-             print(f"[GoveeBleLight.Client::SetBrightness] Error: {l_Exception}");
+             print(f"[GoveeBleLight.Client::_Send_SetBrightness] Error: {l_Exception}");
 
         return False;
 
@@ -198,7 +241,7 @@ class Client:
             return await self._Send(ELedCommand.SetColor, [ELedMode.Manual, p_R, p_G, p_B]);
 
         except Exception as l_Exception:
-             print(f"[GoveeBleLight.Client::SetColorRGB] Error: {l_Exception}");
+             print(f"[GoveeBleLight.Client::_Send_SetColorRGB] Error: {l_Exception}");
 
         return False;
 
@@ -245,10 +288,8 @@ class Client:
 
             return True;
 
-        except:
-            if self._Reconnect > 0:
-                return False;
-
+        except Exception as l_Exception:
+            print(f"[GoveeBleLight.Client::_Send] Error: {l_Exception}");
             self._Reconnect += 1;
 
-            return await self._Send(p_CMD, p_Payload);
+        return False;
