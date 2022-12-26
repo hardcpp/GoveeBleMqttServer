@@ -135,6 +135,7 @@ def OnPayloadReceived(p_MqttClient, p_DeviceID, p_Paypload):
 
         if not p_DeviceID in CLIENTS:
             CLIENTS[p_DeviceID] = GoveeBleLight.Client(p_DeviceID, p_MqttClient, "goveeblemqtt/zone" + str(SERVER_ZONE_ID) + "/light/" + l_RequestedDeviceID + "/state", ADAPTER);
+            time.sleep(2);
 
         l_Device        = CLIENTS[p_DeviceID];
         l_ExpectedState = 1 if p_Paypload["state"] == "ON" else 0;

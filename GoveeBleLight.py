@@ -66,8 +66,12 @@ class Client:
 
         print("[GoveeBleLight.Client::Close] Closing device " + self._DeviceID + "...");
 
-        self._ThreadCond = False;
-        self._Thread.join(10);
+        try:
+            self._ThreadCond = False;
+            self._Thread.join(10);
+        except:
+            pass;
+
         self._Thread = None;
 
     # ////////////////////////////////////////////////////////////////////////////
@@ -146,9 +150,8 @@ class Client:
                         elif self._PingRoll % 3 == 2:
                             l_AsyncRes = await self._Send_SetColorRGB(self.R, self.G, self.B);
 
-                        if not l_AsyncRes:
-                            time.sleep(1);
-                            continue;
+                    time.sleep(0.1);
+                    continue;
 
                 if l_Changed:
                     self._MqttClient.publish(self._MqttTopic, self.BuildMqttPayload());
@@ -180,7 +183,15 @@ class Client:
 
     # Thread starter function
     def _ThreadStarter(self):
-        asyncio.run(self._ThreadCoroutine())
+        while self._ThreadCond:
+            print("[GoveeBleLight.Client::_ThreadStarter] Starting device " + self._DeviceID + " event loop...");
+
+            time.sleep(0.5);
+
+            l_ThreadCoroutine = asyncio.new_event_loop();
+            asyncio.set_event_loop(l_ThreadCoroutine);
+            l_ThreadCoroutine.run_until_complete(self._ThreadCoroutine());
+            l_ThreadCoroutine.close();
 
     # ////////////////////////////////////////////////////////////////////////////
     # ////////////////////////////////////////////////////////////////////////////
