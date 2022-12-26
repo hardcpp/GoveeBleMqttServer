@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import asyncio;
 import json;
 import threading;
@@ -28,6 +29,7 @@ class ELedMode(IntEnum):
 # ////////////////////////////////////////////////////////////////////////////
 
 class Client:
+    # Constructor
     def __init__(self, p_DeviceID, p_MqttClient, p_MqttTopic, p_Adapter):
         self.State              = 0;
         self.Brightness         = 1;
@@ -50,22 +52,23 @@ class Client:
         self._Thread            = threading.Thread(target= self._ThreadStarter);
 
         self._Thread.start();
-
+    # Destructor
     def __del__(self):
-        print("[GoveeBleLight.Client::__del__] CLosing device " + self._DeviceID + "...");
+        self.Close();
+
+    # ////////////////////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////////////////////
+
+    # Properly close the client
+    def Close(self):
+        if self._Thread is None:
+            return;
+
+        print("[GoveeBleLight.Client::Close] Closing device " + self._DeviceID + "...");
 
         self._ThreadCond = False;
         self._Thread.join();
-
-        try:
-            if self._Client is not None:
-                print("[GoveeBleLight.Client::__del__] Disconnecting device " + self._DeviceID);
-                self._Client.disconnect();
-
-        except Exception:
-            pass;
-
-        self._Client = None;
+        self._Thread = None;
 
     # ////////////////////////////////////////////////////////////////////////////
     # ////////////////////////////////////////////////////////////////////////////
@@ -100,6 +103,7 @@ class Client:
     # ////////////////////////////////////////////////////////////////////////////
     # ////////////////////////////////////////////////////////////////////////////
 
+    # Thread main aync coroutine
     async def _ThreadCoroutine(self):
         while self._ThreadCond:
             try:
@@ -173,7 +177,7 @@ class Client:
             pass;
 
         self._Client = None;
-
+    # Thread starter function
     def _ThreadStarter(self):
         asyncio.run(self._ThreadCoroutine())
 
@@ -274,11 +278,11 @@ class Client:
 
     async def _Send(self, p_CMD, p_Payload):
         if not isinstance(p_CMD, int):
-           raise ValueError('Invalid command');
+           raise ValueError('[GoveeBleLight.Client::_Send] Invalid command');
         if not isinstance(p_Payload, bytes) and not (isinstance(p_Payload, list) and all(isinstance(x, int) for x in p_Payload)):
-            raise ValueError('Invalid payload');
+            raise ValueError('[GoveeBleLight.Client::_Send] Invalid payload');
         if len(p_Payload) > 17:
-            raise ValueError('Payload too long');
+            raise ValueError('[GoveeBleLight.Client::_Send] Payload too long');
 
         p_CMD       = p_CMD & 0xFF;
         p_Payload   = bytes(p_Payload);
@@ -300,6 +304,16 @@ class Client:
 
         except Exception as l_Exception:
             print(f"[GoveeBleLight.Client::_Send] Error: {l_Exception}");
+
+            try:
+                if self._Client is not None:
+                    print("[GoveeBleLight.Client::_Send] Disconnecting device " + self._DeviceID);
+                    await self._Client.disconnect();
+
+            except:
+                pass;
+
             self._Reconnect += 1;
+            self._Client     = None;
 
         return False;
