@@ -2,7 +2,9 @@ import asyncio;
 import json;
 import paho.mqtt.client as mqtt;
 import GoveeBleLight;
-import sys, getopt
+import sys;
+import getopt;
+import time;
 
 SERVER_ZONE_ID: int = 1;
 ADAPTER: str = None;
@@ -37,9 +39,9 @@ async def main(argv):
         elif l_Option in ("-z", "--zone"):
             SERVER_ZONE_ID = l_Argument
 
-    print("Starting with zone " + str(SERVER_ZONE_ID));
+    print("[Main] Starting with zone " + str(SERVER_ZONE_ID));
     if ADAPTER is not None:
-        print("Starting with adapter " + ADAPTER);
+        print("[Main] Starting with adapter " + ADAPTER);
 
     l_MqttClient = mqtt.Client();
     l_MqttClient.on_connect = Mqtt_OnConnect;
@@ -51,21 +53,31 @@ async def main(argv):
     l_MqttClient.connect(MQTT_SERVER, MQTT_PORT, 60);
 
     while 1:
-        l_MqttClient.loop();
+        try:
+            if l_MqttClient.loop() != mqtt.MQTT_ERR_SUCCESS:
+                print("[Main] Disconnected from Mqtt, trying to reconnect in 5 seconds...");
+                time.sleep(5);
 
-        while len(MESSAGE_QUEUE) > 0:
-            l_Message   = MESSAGE_QUEUE.pop(0);
-            l_Topic     = l_Message.topic;
-            l_Prefix    = "goveeblemqtt/zone" + str(SERVER_ZONE_ID) + "/light/";
-            l_Suffix    = "/command";
+                if l_MqttClient.connect() == mqtt.MQTT_ERR_SUCCESS:
+                    pass;
 
-            if not l_Topic.startswith(l_Prefix) and not l_Topic.endwith(l_Suffix):
-                continue;
+            while len(MESSAGE_QUEUE) > 0:
+                l_Message   = MESSAGE_QUEUE.pop(0);
+                l_Topic     = l_Message.topic;
+                l_Prefix    = "goveeblemqtt/zone" + str(SERVER_ZONE_ID) + "/light/";
+                l_Suffix    = "/command";
 
-            l_DeviceID = l_Topic[len(l_Prefix):len(l_Topic)-len(l_Suffix)];
-            l_Payload  = json.loads(l_Message.payload.decode("utf-8","ignore"));
+                if not l_Topic.startswith(l_Prefix) and not l_Topic.endwith(l_Suffix):
+                    continue;
 
-            await OnPayloadReceived(l_MqttClient, l_DeviceID, l_Payload)
+                l_DeviceID = l_Topic[len(l_Prefix):len(l_Topic)-len(l_Suffix)];
+                l_Payload  = json.loads(l_Message.payload.decode("utf-8","ignore"));
+
+                OnPayloadReceived(l_MqttClient, l_DeviceID, l_Payload);
+
+        except:
+            pass;
+
 
 # ////////////////////////////////////////////////////////////////////////////
 # ////////////////////////////////////////////////////////////////////////////
@@ -85,7 +97,7 @@ def Mqtt_OnMessage(p_MqttClient, _, p_Message):
 # ////////////////////////////////////////////////////////////////////////////
 # ////////////////////////////////////////////////////////////////////////////
 
-async def OnPayloadReceived(p_MqttClient, p_DeviceID, p_Paypload):
+def OnPayloadReceived(p_MqttClient, p_DeviceID, p_Paypload):
     l_RequestedDeviceID = p_DeviceID;
     l_Device            = None;
 
@@ -114,7 +126,7 @@ async def OnPayloadReceived(p_MqttClient, p_DeviceID, p_Paypload):
 
         print(p_DeviceID + " " + str(p_Paypload))
     except Exception as l_Exception:
-        print(f"OnPayloadReceived: Something Bad happened: {l_Exception}")
+        print(f"[OnPayloadReceived] OnPayloadReceived: Something Bad happened: {l_Exception}")
 
 # ////////////////////////////////////////////////////////////////////////////
 # ////////////////////////////////////////////////////////////////////////////
