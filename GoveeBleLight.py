@@ -45,8 +45,9 @@ class Client:
         self._DirtyBrightness   = False;
         self._DirtyRGB          = False;
         self._LastSent          = time.time();
+        self._PingRoll          = 0;
         self._ThreadCond        = True;
-        self._Thread            = threading.Thread(target= self._ThreadStarter)
+        self._Thread            = threading.Thread(target= self._ThreadStarter);
 
         self._Thread.start();
 
@@ -108,14 +109,7 @@ class Client:
 
                 l_Changed = True;
 
-                if not self._DirtyState and not self._DirtyBrightness and not self._DirtyRGB and (time.time() - self._LastSent) >= 1:
-                    if not await self._Send_SetPower(self.State):
-                        time.sleep(1);
-                        continue;
-
-                    #print("[GoveeBleLight.Client::_ThreadCoroutine] keep alive!");
-
-                elif self._DirtyState:
+                if self._DirtyState:
                     if not await self._Send_SetPower(self.State):
                         time.sleep(1);
                         continue;
@@ -135,6 +129,22 @@ class Client:
                     self._DirtyRGB = False;
                 else:
                     l_Changed = False;
+
+                    # Keep alive
+                    if (time.time() - self._LastSent) >= 1:
+                        l_AsyncRes = False;
+                        self._PingRoll += 1;
+
+                        if self._PingRoll % 3 == 0:
+                            l_AsyncRes = await self._Send_SetPower(self.State);
+                        if self._PingRoll % 3 == 1:
+                            l_AsyncRes = await self._Send_SetBrightness(self.Brightness);
+                        if self._PingRoll % 3 == 2:
+                            l_AsyncRes = await self._Send_SetColorRGB(self.R, self.G, self.B);
+
+                        if not l_AsyncRes:
+                            time.sleep(1);
+                            continue;
 
                 if l_Changed:
                     self._MqttClient.publish(self._MqttTopic, self.BuildMqttPayload());
