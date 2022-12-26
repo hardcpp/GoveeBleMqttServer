@@ -184,6 +184,7 @@ class Client:
     # ////////////////////////////////////////////////////////////////////////////
     # ////////////////////////////////////////////////////////////////////////////
 
+    # Handle connect/reconnect
     async def _Connect(self):
         if self._Client != None and self._Client.is_connected:
             return True;
@@ -207,6 +208,8 @@ class Client:
 
             await self._Client.connect();
             self._Reconnect = 0;
+
+            print("[GoveeBleLight.Client::Connect] Connected to device " + self._DeviceID);
 
             return self._Client.is_connected;
 
