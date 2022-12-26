@@ -5,7 +5,7 @@ GoveeBleMqttServer is a Govee Bluetooth Low Energy Mqtt light controller.
 ![demo](demo.png)
 
 # Requirements
-A Bluetooth Low Energy compatible adaptater
+A Bluetooth Low Energy compatible adapter
 
 # Installation
 Requires Python 3.
@@ -17,22 +17,23 @@ pip install bleak
 ```
 
 # Features
-* Controll Govee lights over Bluetooth Low Energy
+* Control Govee lights over Bluetooth Low Energy
 * Mqtt support for connecting to Home Assistant
 * Multi-zone support (To cover wider Bluetooth area)
 * Auto configuration from Home Assistant Mqtt objects
 * Keep alive BLE for fast response time
 
 # Beware: dongles with the same MAC address!
-Multiple dongle of the same brand will share the same MAC address and violates the specifications.
-Having multiple dongle with the same MAC address will cause interference and will make the connections not working.
+Multiple dongles of the same brand will share the same MAC address and violates the specifications.
+Having multiple dongles with the same MAC address will cause interference and will make the connections not working.
 
-If you are lucky, you can re-program the dongles to change it's MAC address (RUN AT YOUR OWN RISKS)
+If you are lucky, you can re-program the dongles to change its MAC address (RUN AT YOUR OWN RISKS)
 - Windows: [Bluetooth MAC Address Changer](https://macaddresschanger.com/)
 - Linux: [bdaddr](https://github.com/thxomas/bdaddr)
 
 # Tested hardware
 - H6107 Fully functional
+- H6138 Fully functional
 - H6159 Fully functional
 
 # Configuration
