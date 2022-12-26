@@ -139,7 +139,7 @@ class Client:
                         l_AsyncRes = False;
                         self._PingRoll += 1;
 
-                        if self._PingRoll % 3 == 0:
+                        if self._PingRoll % 3 == 0 or self.State == 0:
                             l_AsyncRes = await self._Send_SetPower(self.State);
                         if self._PingRoll % 3 == 1:
                             l_AsyncRes = await self._Send_SetBrightness(self.Brightness);
