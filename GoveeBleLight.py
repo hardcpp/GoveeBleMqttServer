@@ -67,7 +67,7 @@ class Client:
         print("[GoveeBleLight.Client::Close] Closing device " + self._DeviceID + "...");
 
         self._ThreadCond = False;
-        self._Thread.join();
+        self._Thread.join(10);
         self._Thread = None;
 
     # ////////////////////////////////////////////////////////////////////////////
@@ -141,9 +141,9 @@ class Client:
 
                         if self._PingRoll % 3 == 0 or self.State == 0:
                             l_AsyncRes = await self._Send_SetPower(self.State);
-                        if self._PingRoll % 3 == 1:
+                        elif self._PingRoll % 3 == 1:
                             l_AsyncRes = await self._Send_SetBrightness(self.Brightness);
-                        if self._PingRoll % 3 == 2:
+                        elif self._PingRoll % 3 == 2:
                             l_AsyncRes = await self._Send_SetColorRGB(self.R, self.G, self.B);
 
                         if not l_AsyncRes:
@@ -177,6 +177,7 @@ class Client:
             pass;
 
         self._Client = None;
+
     # Thread starter function
     def _ThreadStarter(self):
         asyncio.run(self._ThreadCoroutine())
