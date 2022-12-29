@@ -35,6 +35,8 @@ If you are lucky, you can re-program the dongles to change its MAC address (RUN 
 - H6107 Fully functional
 - H6138 Fully functional
 - H6159 Fully functional
+- H6139 Fully functional
+
 
 # Configuration
 
