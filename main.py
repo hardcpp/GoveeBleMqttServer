@@ -66,7 +66,7 @@ async def main(argv):
                 print("[Main] Disconnected from Mqtt, trying to reconnect in 5 seconds...");
                 time.sleep(5);
 
-                if l_MqttClient.connect() == mqtt.MQTT_ERR_SUCCESS:
+                if l_MqttClient.connect(MQTT_SERVER, MQTT_PORT, 60) == mqtt.MQTT_ERR_SUCCESS:
                     pass;
 
             while len(MESSAGE_QUEUE) > 0:
