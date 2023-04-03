@@ -74,7 +74,7 @@ Replace NAME OF THE LIGHT three times by the name of your light
 
 Replace MAC_ADDRESS_LOWER_NO_DOTS twice by the Bluetooth mac address of your light, for instance a4c13825cd56
 
-Multiple lights exemple
+Multiple lights example:
 
 ![demo2](demo2.png)
 
