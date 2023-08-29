@@ -79,9 +79,14 @@ async def main(argv):
                     continue;
 
                 l_DeviceID = l_Topic[len(l_Prefix):len(l_Topic)-len(l_Suffix)];
+                l_Model    = "generic";
                 l_Payload  = json.loads(l_Message.payload.decode("utf-8","ignore"));
 
-                OnPayloadReceived(l_MqttClient, l_DeviceID, l_Payload);
+                if "_" in l_DeviceID:
+                    l_Model    = l_DeviceID[l_DeviceID.find('_')+1:];
+                    l_DeviceID = l_DeviceID[:l_DeviceID.find('_')];
+
+                OnPayloadReceived(l_MqttClient, l_DeviceID, l_Model, l_Payload);
 
         except:
             pass;
@@ -123,7 +128,7 @@ def Mqtt_OnMessage(p_MqttClient, _, p_Message):
 # ////////////////////////////////////////////////////////////////////////////
 # ////////////////////////////////////////////////////////////////////////////
 
-def OnPayloadReceived(p_MqttClient, p_DeviceID, p_Paypload):
+def OnPayloadReceived(p_MqttClient, p_DeviceID, p_Model, p_Paypload):
     global CLIENTS;
     global MESSAGE_QUEUE;
 
@@ -134,7 +139,7 @@ def OnPayloadReceived(p_MqttClient, p_DeviceID, p_Paypload):
         p_DeviceID = ':'.join(p_DeviceID[i:i+2] for i in range(0, len(p_DeviceID), 2));
 
         if not p_DeviceID in CLIENTS:
-            CLIENTS[p_DeviceID] = GoveeBleLight.Client(p_DeviceID, p_MqttClient, "goveeblemqtt/zone" + str(SERVER_ZONE_ID) + "/light/" + l_RequestedDeviceID + "/state", ADAPTER);
+            CLIENTS[p_DeviceID] = GoveeBleLight.Client(p_DeviceID, p_Model, p_MqttClient, "goveeblemqtt/zone" + str(SERVER_ZONE_ID) + "/light/" + l_RequestedDeviceID + "/state", ADAPTER);
             time.sleep(2);
 
         l_Device        = CLIENTS[p_DeviceID];

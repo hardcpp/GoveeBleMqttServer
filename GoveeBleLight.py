@@ -24,13 +24,14 @@ class ELedMode(IntEnum):
     Manual     = 0x02
     Microphone = 0x06
     Scenes     = 0x05
+    Manual2    = 0x0D
 
 # ////////////////////////////////////////////////////////////////////////////
 # ////////////////////////////////////////////////////////////////////////////
 
 class Client:
     # Constructor
-    def __init__(self, p_DeviceID, p_MqttClient, p_MqttTopic, p_Adapter):
+    def __init__(self, p_DeviceID, p_Model, p_MqttClient, p_MqttTopic, p_Adapter):
         self.State              = 0;
         self.Brightness         = 1;
         self.R                  = 255;
@@ -38,6 +39,7 @@ class Client:
         self.B                  = 255;
 
         self._DeviceID          = p_DeviceID;
+        self._Model             = p_Model;
         self._Client            = None;
         self._Adapter           = p_Adapter;
         self._Reconnect         = 0;
@@ -250,8 +252,13 @@ class Client:
         if not 0 <= float(p_Value) <= 1:
             raise ValueError(f'SetBrightness: Brightness out of range: {p_Value}')
 
+        l_Brightness = round(p_Value * 0xFF);
+
+        if self._Model == "H6008" or self._Model == "H613D":
+            l_Brightness = int(p_Value * 100);
+
         try:
-            return await self._Send(ELedCommand.SetBrightness, [round(p_Value * 0xFF)]);
+            return await self._Send(ELedCommand.SetBrightness, [l_Brightness]);
 
         except Exception as l_Exception:
              print(f"[GoveeBleLight.Client::_Send_SetBrightness] Error: {l_Exception}");
@@ -266,8 +273,12 @@ class Client:
         if not isinstance(p_B, int) or p_B < 0 or p_B > 255:
            raise ValueError(f'SetColorRGB: p_B out of range {p_B}');
 
+        l_LedMode = ELedMode.Manual;
+        if self._Model == "H6008" or self._Model == "H613D":
+            l_LedMode = ELedMode.Manual2;
+
         try:
-            return await self._Send(ELedCommand.SetColor, [ELedMode.Manual, p_R, p_G, p_B]);
+            return await self._Send(ELedCommand.SetColor, [l_LedMode, p_R, p_G, p_B]);
 
         except Exception as l_Exception:
              print(f"[GoveeBleLight.Client::_Send_SetColorRGB] Error: {l_Exception}");
