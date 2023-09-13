@@ -3,6 +3,7 @@ import asyncio;
 import json;
 import threading;
 import time;
+import math;
 
 from enum import IntEnum;
 from bleak import BleakClient;
@@ -25,6 +26,70 @@ class ELedMode(IntEnum):
     Microphone = 0x06
     Scenes     = 0x05
     Manual2    = 0x0D
+    Segment    = 0x15
+
+class EControlMode(IntEnum):
+    Color       = 0x01
+    Temperature = 0x02
+
+def convert_K_to_RGB(colour_temperature):
+    """
+    Converts from K to RGB, algorithm courtesy of
+    http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
+    """
+    #range check
+    if colour_temperature < 1000:
+        colour_temperature = 1000
+    elif colour_temperature > 40000:
+        colour_temperature = 40000
+
+    tmp_internal = colour_temperature / 100.0
+
+    # red
+    if tmp_internal <= 66:
+        red = 255
+    else:
+        tmp_red = 329.698727446 * math.pow(tmp_internal - 60, -0.1332047592)
+        if tmp_red < 0:
+            red = 0
+        elif tmp_red > 255:
+            red = 255
+        else:
+            red = tmp_red
+
+    # green
+    if tmp_internal <=66:
+        tmp_green = 99.4708025861 * math.log(tmp_internal) - 161.1195681661
+        if tmp_green < 0:
+            green = 0
+        elif tmp_green > 255:
+            green = 255
+        else:
+            green = tmp_green
+    else:
+        tmp_green = 288.1221695283 * math.pow(tmp_internal - 60, -0.0755148492)
+        if tmp_green < 0:
+            green = 0
+        elif tmp_green > 255:
+            green = 255
+        else:
+            green = tmp_green
+
+    # blue
+    if tmp_internal >=66:
+        blue = 255
+    elif tmp_internal <= 19:
+        blue = 0
+    else:
+        tmp_blue = 138.5177312231 * math.log(tmp_internal - 10) - 305.0447927307
+        if tmp_blue < 0:
+            blue = 0
+        elif tmp_blue > 255:
+            blue = 255
+        else:
+            blue = tmp_blue
+
+    return int(red), int(green), int(blue);
 
 # ////////////////////////////////////////////////////////////////////////////
 # ////////////////////////////////////////////////////////////////////////////
@@ -32,8 +97,11 @@ class ELedMode(IntEnum):
 class Client:
     # Constructor
     def __init__(self, p_DeviceID, p_Model, p_MqttClient, p_MqttTopic, p_Adapter):
+        self.ControlMode        = EControlMode.Color;
         self.State              = 0;
         self.Brightness         = 1;
+        self.Segment            = -1;
+        self.Temperature        = 4000;
         self.R                  = 255;
         self.G                  = 255;
         self.B                  = 255;
@@ -47,7 +115,7 @@ class Client:
         self._MqttTopic         = p_MqttTopic;
         self._DirtyState        = False;
         self._DirtyBrightness   = False;
-        self._DirtyRGB          = False;
+        self._DirtyColor        = False;
         self._LastSent          = time.time();
         self._PingRoll          = 0;
         self._ThreadCond        = True;
@@ -93,6 +161,19 @@ class Client:
         self.Brightness         = p_Value;
         self._DirtyBrightness   = True;
 
+    def SetSegment(self, p_Segment):
+        if p_Segment == -1 or p_Segment == 0:
+            self.Segment = -1;
+        else:
+            self.Segment = p_Segment;
+
+    def SetColorTempMired(self, p_Value):
+        l_ColorTempK = 1000000 / p_Value;
+
+        self.ControlMode = EControlMode.Temperature;
+        self.Temperature = l_ColorTempK;
+        self._DirtyColor = True;
+
     def SetColorRGB(self, p_R, p_G, p_B):
         if not isinstance(p_R, int) or p_R < 0 or p_R > 255:
            raise ValueError(f'SetColorRGB: p_R out of range {p_R}');
@@ -101,10 +182,11 @@ class Client:
         if not isinstance(p_B, int) or p_B < 0 or p_B > 255:
            raise ValueError(f'SetColorRGB: p_B out of range {p_B}');
 
-        self.R          = p_R;
-        self.G          = p_G;
-        self.B          = p_B;
-        self._DirtyRGB  = True;
+        self.ControlMode    = EControlMode.Color;
+        self.R              = p_R;
+        self.G              = p_G;
+        self.B              = p_B;
+        self._DirtyColor    = True;
 
     # ////////////////////////////////////////////////////////////////////////////
     # ////////////////////////////////////////////////////////////////////////////
@@ -131,12 +213,12 @@ class Client:
                         continue;
 
                     self._DirtyBrightness = False;
-                elif self._DirtyRGB:
-                    if not await self._Send_SetColorRGB(self.R, self.G, self.B):
+                elif self._DirtyColor:
+                    if not await self._Send_SetColor():
                         time.sleep(1);
                         continue;
 
-                    self._DirtyRGB = False;
+                    self._DirtyColor = False;
                 else:
                     l_Changed = False;
 
@@ -150,12 +232,13 @@ class Client:
                         elif self._PingRoll % 3 == 1:
                             l_AsyncRes = await self._Send_SetBrightness(self.Brightness);
                         elif self._PingRoll % 3 == 2:
-                            l_AsyncRes = await self._Send_SetColorRGB(self.R, self.G, self.B);
+                            l_AsyncRes = await self._Send_SetColor();
 
                     time.sleep(0.1);
                     continue;
 
                 if l_Changed:
+                    print(self.BuildMqttPayload());
                     self._MqttClient.publish(self._MqttTopic, self.BuildMqttPayload());
 
                 time.sleep(0.01);
@@ -254,7 +337,7 @@ class Client:
 
         l_Brightness = round(p_Value * 0xFF);
 
-        if self._Model == "H6008" or self._Model == "H613D":
+        if self._Model == "H6008" or self._Model == "H613D" or self._Model == "H6172":
             l_Brightness = int(p_Value * 100);
 
         try:
@@ -265,23 +348,44 @@ class Client:
 
         return False;
 
-    async def _Send_SetColorRGB(self, p_R, p_G, p_B):
-        if not isinstance(p_R, int) or p_R < 0 or p_R > 255:
-           raise ValueError(f'SetColorRGB: p_R out of range {p_R}');
-        if not isinstance(p_G, int) or p_G < 0 or p_G > 255:
-           raise ValueError(f'SetColorRGB: p_G out of range {p_G}');
-        if not isinstance(p_B, int) or p_B < 0 or p_B > 255:
-           raise ValueError(f'SetColorRGB: p_B out of range {p_B}');
+    async def _Send_SetColor(self):
+        l_R = self.R;
+        l_G = self.G;
+        l_B = self.B;
+
+        l_TK = 0
+        l_WR = 0;
+        l_WG = 0;
+        l_WB = 0;
+
+        if self.ControlMode == EControlMode.Temperature:
+            l_R  = l_G = l_B = 0xFF;
+            l_TK = int(self.Temperature);
+
+        if not isinstance(l_R, int) or l_R < 0 or l_R > 255:
+           raise ValueError(f'SetColorRGB: l_R out of range {l_R}');
+        if not isinstance(l_G, int) or l_G < 0 or l_G > 255:
+           raise ValueError(f'SetColorRGB: l_G out of range {l_G}');
+        if not isinstance(l_B, int) or l_B < 0 or l_B > 255:
+           raise ValueError(f'SetColorRGB: l_B out of range {l_B}');
 
         l_LedMode = ELedMode.Manual;
-        if self._Model == "H6008" or self._Model == "H613D":
-            l_LedMode = ELedMode.Manual2;
 
         try:
-            return await self._Send(ELedCommand.SetColor, [l_LedMode, p_R, p_G, p_B]);
+            if self._Model == "H6008" or self._Model == "H613D":
+                l_LedMode = ELedMode.Manual2;
+
+                return await self._Send(ELedCommand.SetColor, [l_LedMode, l_R, l_G, l_B, (l_TK >> 8) & 0xFF, l_TK & 0xFF, l_WR, l_WG, l_WB]);
+            elif self._Model == "H6172":
+                l_LedMode = ELedMode.Segment;
+
+                return await self._Send(ELedCommand.SetColor, [l_LedMode, 0x01, l_R, l_G, l_B, (l_TK >> 8) & 0xFF, l_TK & 0xFF, l_WR, l_WG, l_WB, (self.Segment >> 8) & 0xFF, self.Segment & 0xFF]);
+            else:
+                # Todo figure out WW control
+                return await self._Send(ELedCommand.SetColor, [l_LedMode, l_R, l_G, l_B]);
 
         except Exception as l_Exception:
-             print(f"[GoveeBleLight.Client::_Send_SetColorRGB] Error: {l_Exception}");
+             print(f"[GoveeBleLight.Client::_Send_SetColor] Error: {l_Exception}");
 
         return False;
 
@@ -289,15 +393,29 @@ class Client:
     # ////////////////////////////////////////////////////////////////////////////
 
     def BuildMqttPayload(self):
-        return json.dumps({
-            "state":        "ON" if self.State == 1 else "OFF",
-            "color": {
-                "r": self.R,
-                "g": self.G,
-                "b": self.B
-            },
-            "brightness":   round(self.Brightness * 255)
-        });
+        if self.ControlMode == EControlMode.Color:
+            return json.dumps({
+                "state":        "ON" if self.State == 1 else "OFF",
+                "color": {
+                    "r": self.R,
+                    "g": self.G,
+                    "b": self.B
+                },
+                "brightness":   round(self.Brightness * 255)
+            });
+        elif self.ControlMode == EControlMode.Temperature:
+            l_TempColorR, l_TempColorG, l_TempColorB = convert_K_to_RGB(self.Temperature);
+
+            return json.dumps({
+                "state":        "ON" if self.State == 1 else "OFF",
+                "brightness":   round(self.Brightness * 255),
+                "color": {
+                    "r": l_TempColorR,
+                    "g": l_TempColorG,
+                    "b": l_TempColorB
+                },
+                "color_temp":   int(1000000 / self.Temperature)
+            });
 
     # ////////////////////////////////////////////////////////////////////////////
     # ////////////////////////////////////////////////////////////////////////////
