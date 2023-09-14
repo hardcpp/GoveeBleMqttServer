@@ -32,10 +32,12 @@ If you are lucky, you can re-program the dongles to change its MAC address (RUN 
 - Linux: [bdaddr](https://github.com/thxomas/bdaddr)
 
 # Tested hardware
+- H6008 Fully functional
 - H6107 Fully functional
 - H6138 Fully functional
-- H6159 Fully functional
 - H6139 Fully functional
+- H6159 Fully functional
+- H6712 Fully functional (With segment control, but not Cold/Warm)
 
 
 # Configuration
