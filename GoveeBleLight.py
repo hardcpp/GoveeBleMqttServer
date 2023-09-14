@@ -337,7 +337,7 @@ class Client:
 
         l_Brightness = round(p_Value * 0xFF);
 
-        if self._Model == "H6008" or self._Model == "H613D" or self._Model == "H6172":
+        if self._Model == "H6008" or self._Model == "H613A" self._Model == "H613D" or self._Model == "H6172":
             l_Brightness = int(p_Value * 100);
 
         try:
@@ -372,7 +372,7 @@ class Client:
         l_LedMode = ELedMode.Manual;
 
         try:
-            if self._Model == "H6008" or self._Model == "H613D":
+            if self._Model == "H6008" or self._Model == "H613A" or self._Model == "H613D":
                 l_LedMode = ELedMode.Manual2;
 
                 return await self._Send(ELedCommand.SetColor, [l_LedMode, l_R, l_G, l_B, (l_TK >> 8) & 0xFF, l_TK & 0xFF, l_WR, l_WG, l_WB]);
