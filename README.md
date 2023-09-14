@@ -61,8 +61,8 @@ mqtt:
       - schema: json
         name: "NAME OF THE LIGHT"
         object_id: "NAME OF THE LIGHT"
-        state_topic: "goveeblemqtt/zone1/light/MAC_ADDRESS_LOWER_NO_DOTS/state"
-        command_topic: "goveeblemqtt/zone1/light/MAC_ADDRESS_LOWER_NO_DOTS/command"
+        state_topic: "goveeblemqtt/zone1/light/MacAddressLowerNoDots_ModelNumber/state"
+        command_topic: "goveeblemqtt/zone1/light/MacAddressLowerNoDots_ModelNumber/command"
         brightness: true
         rgb: true
         optimistic: false
@@ -71,7 +71,8 @@ mqtt:
 
 Replace NAME OF THE LIGHT twice by the name of your light
 
-Replace MAC_ADDRESS_LOWER_NO_DOTS twice by the Bluetooth mac address of your light, for instance a4c13825cd56
+Replace MacAddressLowerNoDots twice by the Bluetooth mac address of your light, for instance a4c13825cd56
+Replace ModelNumber twice by the model number of your light, for instance H6008
 
 Multiple lights exemple
 
