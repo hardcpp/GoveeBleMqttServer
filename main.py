@@ -10,7 +10,7 @@ import signal;
 
 SERVER_ZONE_ID: int = 1;
 ADAPTER: str = None;
-MQTT_SERVER: str = "192.168.10.170";
+MQTT_SERVER: str = "192.168.14.12";
 MQTT_PORT: int = 1883;
 MQTT_USER: str = None;
 MQTT_PASS: str = None;
@@ -79,9 +79,14 @@ async def main(argv):
                     continue;
 
                 l_DeviceID = l_Topic[len(l_Prefix):len(l_Topic)-len(l_Suffix)];
+                l_Model    = "generic";
                 l_Payload  = json.loads(l_Message.payload.decode("utf-8","ignore"));
 
-                OnPayloadReceived(l_MqttClient, l_DeviceID, l_Payload);
+                if "_" in l_DeviceID:
+                    l_Model    = l_DeviceID[l_DeviceID.find('_')+1:];
+                    l_DeviceID = l_DeviceID[:l_DeviceID.find('_')];
+
+                OnPayloadReceived(l_MqttClient, l_Topic, l_DeviceID, l_Model, l_Payload);
 
         except:
             pass;
@@ -123,28 +128,39 @@ def Mqtt_OnMessage(p_MqttClient, _, p_Message):
 # ////////////////////////////////////////////////////////////////////////////
 # ////////////////////////////////////////////////////////////////////////////
 
-def OnPayloadReceived(p_MqttClient, p_DeviceID, p_Paypload):
+def OnPayloadReceived(p_MqttClient, p_Topic, p_DeviceID, p_Model, p_Paypload):
     global CLIENTS;
     global MESSAGE_QUEUE;
 
     l_RequestedDeviceID = p_DeviceID;
     l_Device            = None;
 
+    print(p_DeviceID + " " + str(p_Paypload));
+
     try:
         p_DeviceID = ':'.join(p_DeviceID[i:i+2] for i in range(0, len(p_DeviceID), 2));
 
         if not p_DeviceID in CLIENTS:
-            CLIENTS[p_DeviceID] = GoveeBleLight.Client(p_DeviceID, p_MqttClient, "goveeblemqtt/zone" + str(SERVER_ZONE_ID) + "/light/" + l_RequestedDeviceID + "/state", ADAPTER);
+            l_Topic = p_Topic[0:p_Topic.rfind("/") + 1] + "state";
+            CLIENTS[p_DeviceID] = GoveeBleLight.Client(p_DeviceID, p_Model, p_MqttClient, l_Topic, ADAPTER);
             time.sleep(2);
 
-        l_Device        = CLIENTS[p_DeviceID];
-        l_ExpectedState = 1 if p_Paypload["state"] == "ON" else 0;
+        l_Device = CLIENTS[p_DeviceID];
 
-        if l_Device.State != l_ExpectedState:
-            l_Device.SetPower(l_ExpectedState);
+        if "state" in p_Paypload:
+            l_ExpectedState = 1 if p_Paypload["state"] == "ON" else 0;
+
+            if l_Device.State != l_ExpectedState:
+                l_Device.SetPower(l_ExpectedState);
 
         if "brightness" in p_Paypload:
             l_Device.SetBrightness(p_Paypload["brightness"] / 255);
+
+        if "segment" in p_Paypload:
+            l_Device.SetSegment(p_Paypload["segment"]);
+
+        if "color_temp" in p_Paypload:
+            l_Device.SetColorTempMired(p_Paypload["color_temp"]);
 
         if "color" in p_Paypload:
             l_R = p_Paypload["color"]["r"];
@@ -153,8 +169,6 @@ def OnPayloadReceived(p_MqttClient, p_DeviceID, p_Paypload):
 
             if l_Device.R != l_R or l_Device.G != l_G or l_Device.B != l_B:
                 l_Device.SetColorRGB(l_R, l_G, l_B);
-
-        print(p_DeviceID + " " + str(p_Paypload));
 
     except Exception as l_Exception:
         print(f"[OnPayloadReceived] OnPayloadReceived: Something Bad happened: {l_Exception}")

@@ -32,10 +32,14 @@ If you are lucky, you can re-program the dongles to change its MAC address (RUN 
 - Linux: [bdaddr](https://github.com/thxomas/bdaddr)
 
 # Tested hardware
+- H6008 Fully functional
 - H6107 Fully functional
 - H6138 Fully functional
-- H6159 Fully functional
 - H6139 Fully functional
+- H613A Fully functional
+- H613B Fully functional
+- H6159 Fully functional
+- H6712 Fully functional (With segment control, but not Cold/Warm)
 
 
 # Configuration
@@ -57,8 +61,8 @@ mqtt:
       - schema: json
         name: "NAME OF THE LIGHT"
         object_id: "NAME OF THE LIGHT"
-        state_topic: "goveeblemqtt/zone1/light/MAC_ADDRESS_LOWER_NO_DOTS/state"
-        command_topic: "goveeblemqtt/zone1/light/MAC_ADDRESS_LOWER_NO_DOTS/command"
+        state_topic: "goveeblemqtt/zone1/light/MacAddressLowerNoDots_ModelNumber/state"
+        command_topic: "goveeblemqtt/zone1/light/MacAddressLowerNoDots_ModelNumber/command"
         brightness: true
         rgb: true
         optimistic: false
@@ -72,7 +76,8 @@ Create a random unique id and replace RANDOM_UNIQUE_ID_HERE twice (this is used 
 
 Replace NAME OF THE LIGHT three times by the name of your light
 
-Replace MAC_ADDRESS_LOWER_NO_DOTS twice by the Bluetooth mac address of your light, for instance a4c13825cd56
+Replace MacAddressLowerNoDots twice by the Bluetooth mac address of your light, for instance a4c13825cd56
+Replace ModelNumber twice by the model number of your light, for instance H6008
 
 Multiple lights example:
 
