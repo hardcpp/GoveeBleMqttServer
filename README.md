@@ -67,14 +67,19 @@ mqtt:
         rgb: true
         optimistic: false
         qos: 0
+        unique_id: "RANDOM_UNIQUE_ID_HERE"
+        device:
+            identifiers: "RANDOM_UNIQUE_ID_HERE"
+            name: "NAME OF THE LIGHT"
 ```
+Create a random unique id and replace RANDOM_UNIQUE_ID_HERE twice (this is used internally by Home Assistant).
 
-Replace NAME OF THE LIGHT twice by the name of your light
+Replace NAME OF THE LIGHT three times by the name of your light
 
 Replace MacAddressLowerNoDots twice by the Bluetooth mac address of your light, for instance a4c13825cd56
 Replace ModelNumber twice by the model number of your light, for instance H6008
 
-Multiple lights exemple
+Multiple lights example:
 
 ![demo2](demo2.png)
 
