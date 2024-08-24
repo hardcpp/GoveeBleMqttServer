@@ -39,7 +39,9 @@ If you are lucky, you can re-program the dongles to change its MAC address (RUN 
 - H613A Fully functional
 - H613B Fully functional
 - H6159 Fully functional
+- H6159r2 (Rev 2) Fully functional
 - H6712 Fully functional (With segment control, but not Cold/Warm)
+- H618F Fully functional (With segment control)
 
 
 # Configuration
